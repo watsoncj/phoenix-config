@@ -6,15 +6,6 @@ var keys = [];
 var cmd = ['cmd'];
 var cmdAlt = ['cmd', 'alt'];
 
-var lastMode;
-var currentMode;
-
-function trackMode(mode) {
-  Phoenix.log('switching to: ' + mode + ' from: ' + currentMode);
-  lastMode = currentMode;
-  currentMode = mode;
-}
-
 var grids = {
   '1 Up': {rows: 1, cols: 1},
   '2 Up': {rows: 1, cols: 2},
@@ -24,48 +15,37 @@ var grids = {
   '9 Up': {rows: 3, cols: 3},
 };
 
-function gridFn(mode) {
-  var rows = grids[mode].rows;
-  var cols = grids[mode].cols;
-  return function grid() {
-    Phoenix.log('current: ' + currentMode + ' last: ' + lastMode);
-    if (mode!==lastMode && mode===currentMode && lastMode) {
-      // toggle to previous mode
-      gridFn(lastMode)();
-    } else {
-      trackMode(mode);
+function grid(name) {
+  var rows = grids[name].rows;
+  var cols = grids[name].cols;
+  return function applyGrid() {
+    var windows = Window.visibleWindowsInOrder();
+    windows.splice(Math.min(windows.length, cols*rows));
+    var pre = windows.length;
+    var sFrame = Screen.mainScreen().visibleFrameInRectangle();
+    var width = Math.round(sFrame.width / cols);
+    var height = Math.round(sFrame.height / rows);
 
-      var offset = {x: 0, y: 0};
-      var windows = Window.visibleWindowsInOrder();
-      windows.splice(Math.min(windows.length, cols*rows));
-      var pre = windows.length;
-      var sFrame = Screen.mainScreen().visibleFrameInRectangle();
-      var width = Math.round(sFrame.width / cols);
-      var height = Math.round(sFrame.height / rows);
-
-      var x = sFrame.x;
-      var y = sFrame.y;
-      _.times(cols, function(col) {
-        _.times(rows, function(row) {
-          var n = col + (row*cols);
-          var rect = {x: x + (col*width), y: y + (row*height), width: width, height: height};
-          if (windows.length > n) {
-            windows[n].setFrame(rect);
-            offset.y = offset.y - 56;
-          }
-        });
+    var x = sFrame.x;
+    var y = sFrame.y;
+    _.times(cols, function(col) {
+      _.times(rows, function(row) {
+        var n = col + (row*cols);
+        var rect = {x: x + (col*width), y: y + (row*height), width: width, height: height};
+        if (windows.length > n) {
+          windows[n].setFrame(rect);
+        }
       });
-      showCenteredModal(mode);
-    }
+    });
   };
 }
 
-keys.push(Phoenix.bind('1', cmd, gridFn('1 Up')));
-keys.push(Phoenix.bind('2', cmd, gridFn('2 Up')));
-keys.push(Phoenix.bind('3', cmd, gridFn('3 Up')));
-keys.push(Phoenix.bind('4', cmd, gridFn('4 Up')));
-keys.push(Phoenix.bind('6', cmd, gridFn('6 Up')));
-keys.push(Phoenix.bind('9', cmd, gridFn('9 Up')));
+keys.push(Phoenix.bind('1', cmd, grid('1 Up')));
+keys.push(Phoenix.bind('2', cmd, grid('2 Up')));
+keys.push(Phoenix.bind('3', cmd, grid('3 Up')));
+keys.push(Phoenix.bind('4', cmd, grid('4 Up')));
+keys.push(Phoenix.bind('6', cmd, grid('6 Up')));
+keys.push(Phoenix.bind('9', cmd, grid('9 Up')));
 
 function moveFocusFn(dir) {
   return function moveFocus() {
@@ -76,7 +56,6 @@ function moveFocusFn(dir) {
       l: 'focusClosestWindowInEast'
     };
     Window.focusedWindow()[fnNames[dir]]();
-    showCenteredModal('⌘ alt + '+dir.toUpperCase());
   };
 }
 
